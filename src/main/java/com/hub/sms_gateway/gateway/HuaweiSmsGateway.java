@@ -4,14 +4,11 @@ import com.hub.sms_gateway.serial.SerialPortService;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Component
 public class HuaweiSmsGateway implements SmsGateway {
 
     private final SerialPortService serial;
-    private static final Pattern CMS_ERROR_PATTERN = Pattern.compile("\\+CMS ERROR: (\\d+)");
 
     public HuaweiSmsGateway(SerialPortService serial) {
         this.serial = serial;
@@ -33,13 +30,18 @@ public class HuaweiSmsGateway implements SmsGateway {
                 throw new IllegalStateException("Modem não entrou em modo de composição: " + promptResponse);
             }
 
-            // Send the message content and CTRL+Z
             serial.writeRaw(message.getBytes(StandardCharsets.US_ASCII));
-            serial.writeRaw(new byte[]{26}); // CTRL+Z to send
+            serial.writeRaw(new byte[]{26});
 
-            // Wait for the final response (+CMGS or ERROR)
-            String finalResponse = serial.waitForResponse("+CMGS", "ERROR", "OK");
+            String finalResponse = serial.waitForResponse("OK", "+CMS ERROR:", "ERROR");
+
             validateResponse(finalResponse);
+
+            if (!finalResponse.contains("+CMGS:")) {
+                throw new IllegalStateException(
+                        "SMS não foi confirmado pelo modem: " + finalResponse
+                );
+            }
 
             return finalResponse;
 
@@ -53,13 +55,13 @@ public class HuaweiSmsGateway implements SmsGateway {
     }
 
     private void validateResponse(String response) {
+
+        if (response.contains("+CMS ERROR:")) {
+            throw ModemException.fromResponse(response);
+        }
+
         if (response.contains("ERROR")) {
-            Matcher matcher = CMS_ERROR_PATTERN.matcher(response);
-            if (matcher.find()) {
-                String errorCode = matcher.group(1);
-                throw new ModemException("O modem retornou um erro.", errorCode);
-            }
-            throw new IllegalStateException("O modem retornou um erro desconhecido: " + response);
+            throw new ModemException("O modem retornou erro: " + response,"-1");
         }
     }
 }

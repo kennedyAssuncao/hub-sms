@@ -86,9 +86,11 @@ public class SerialPortService {
                     String chunk = new String(buffer, 0, bytesRead, StandardCharsets.US_ASCII);
                     response.append(chunk);
 
+                    String currentResponse = response.toString();
+
                     for (String terminator : terminators) {
-                        if (response.toString().contains(terminator)) {
-                            return response.toString();
+                        if (currentResponse.contains(terminator)) {
+                            return currentResponse;
                         }
                     }
                 }
