@@ -1,6 +1,7 @@
 package com.hub.sms_gateway.gateway;
 
 import com.hub.sms_gateway.serial.SerialPortService;
+import com.hub.sms_gateway.util.SmsTextNormalizer;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -30,7 +31,9 @@ public class HuaweiSmsGateway implements SmsGateway {
                 throw new IllegalStateException("Modem não entrou em modo de composição: " + promptResponse);
             }
 
-            serial.writeRaw(message.getBytes(StandardCharsets.US_ASCII));
+            String normalizedMessage = SmsTextNormalizer.normalize(message);
+
+            serial.writeRaw(normalizedMessage.getBytes(StandardCharsets.US_ASCII));
             serial.writeRaw(new byte[]{26});
 
             String finalResponse = serial.waitForResponse("OK", "+CMS ERROR:", "ERROR");
