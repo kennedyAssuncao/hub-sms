@@ -27,46 +27,36 @@ class ModemServiceTest {
 
         when(serial.sendCommand("ATI"))
                 .thenReturn("""
-                        ATI
-                        Manufacturer: huawei
-                        Model: E3276
-                        Revision: 21.260.05.00.149
-
-                        OK
-                        """);
+                    ATI
+                    Manufacturer: huawei
+                    Model: E3276
+                    Revision: 21.260.05.00.149
+                    OK
+                    """);
 
         when(serial.sendCommand("AT+CPIN?"))
                 .thenReturn("""
-                        +CPIN: READY
-
-                        OK
-                        """);
+                    +CPIN: READY
+                    OK
+                    """);
 
         when(serial.sendCommand("AT+CSQ"))
                 .thenReturn("""
-                        +CSQ: 17,99
-
-                        OK
-                        """);
+                    +CSQ: 17,99
+                    OK
+                    """);
 
         when(serial.sendCommand("AT+COPS?"))
                 .thenReturn("""
-                        +COPS: 0,0,"TIM",7
-
-                        OK
-                        """);
+                    +COPS: 0,0,"TIM",7
+                    OK
+                    """);
 
         when(serial.sendCommand("AT+CREG?"))
                 .thenReturn("""
-                        +CREG: 0,1
-
-                        OK
-                        """);
-        when(serial.sendCommand("AT+CPIN?")).thenReturn("+CPIN: SIM PIN\r\nOK\r\n");
-
-        when(serial.sendCommand("AT+CREG?")).thenReturn("+CREG: 0,0\r\nOK\r\n");
-
-        when(serial.sendCommand("AT+CREG?")).thenReturn("+CREG: 0,5\r\nOK\r\n");
+                    +CREG: 0,1
+                    OK
+                    """);
 
         ModemStatusResponse result =
                 modemService.getStatus();
@@ -79,8 +69,72 @@ class ModemServiceTest {
         assertEquals(17, result.signal());
         assertTrue(result.simReady());
         assertTrue(result.networkRegistered());
-        fail();
+    }
+
+    @Test
+    void shouldReturnSimNotReadyWhenPinIsRequired() {
+
+        mockDefaultResponses();
+
+        when(serial.sendCommand("AT+CPIN?"))
+                .thenReturn("+CPIN: SIM PIN\r\nOK\r\n");
+
+        ModemStatusResponse result =
+                modemService.getStatus();
+
+        assertFalse(result.simReady());
+    }
+
+    @Test
+    void shouldReturnNetworkNotRegistered() {
+
+        mockDefaultResponses();
+
+        when(serial.sendCommand("AT+CREG?"))
+                .thenReturn("+CREG: 0,0\r\nOK\r\n");
+
+        ModemStatusResponse result =
+                modemService.getStatus();
+
         assertFalse(result.networkRegistered());
+    }
+
+    @Test
+    void shouldReturnNetworkRegisteredWhenRoaming() {
+
+        mockDefaultResponses();
+
+        when(serial.sendCommand("AT+CREG?"))
+                .thenReturn("+CREG: 0,5\r\nOK\r\n");
+
+        ModemStatusResponse result =
+                modemService.getStatus();
+
         assertTrue(result.networkRegistered());
+    }
+
+    private void mockDefaultResponses() {
+
+        when(serial.getPortName())
+                .thenReturn("COM5");
+
+        when(serial.sendCommand("ATI"))
+                .thenReturn("""
+                    Manufacturer: huawei
+                    Model: E3276
+                    OK
+                    """);
+
+        when(serial.sendCommand("AT+CPIN?"))
+                .thenReturn("+CPIN: READY\r\nOK\r\n");
+
+        when(serial.sendCommand("AT+CSQ"))
+                .thenReturn("+CSQ: 17,99\r\nOK\r\n");
+
+        when(serial.sendCommand("AT+COPS?"))
+                .thenReturn("+COPS: 0,0,\"TIM\",7\r\nOK\r\n");
+
+        when(serial.sendCommand("AT+CREG?"))
+                .thenReturn("+CREG: 0,1\r\nOK\r\n");
     }
 }
