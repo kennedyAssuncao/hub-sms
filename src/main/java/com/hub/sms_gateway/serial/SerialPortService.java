@@ -88,8 +88,18 @@ public class SerialPortService {
 
                     String currentResponse = response.toString();
 
+                    String normalizedResponse = currentResponse
+                            .replace("\r\r\n", "\r\n")
+                            .replace("\r\n", "\n")
+                            .replace("\r", "\n");
+
                     for (String terminator : terminators) {
-                        if (currentResponse.contains(terminator)) {
+
+                        String normalizedTerminator = terminator
+                                .replace("\r\n", "\n")
+                                .replace("\r", "\n");
+
+                        if (normalizedResponse.contains(normalizedTerminator)) {
                             return currentResponse;
                         }
                     }
@@ -120,5 +130,8 @@ public class SerialPortService {
             byte[] buffer = new byte[serialPort.bytesAvailable()];
             serialPort.readBytes(buffer, buffer.length);
         }
+    }
+    public String getPortName() {
+        return serialPort.getSystemPortName();
     }
 }
