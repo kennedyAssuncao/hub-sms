@@ -1,15 +1,15 @@
 package com.hub.sms_gateway.service;
 
 import com.hub.sms_gateway.dto.ModemStatusResponse;
-import com.hub.sms_gateway.serial.SerialPortService;
+import com.hub.sms_gateway.serial.AtCommandClient;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ModemService {
 
-    private final SerialPortService serial;
+    private final AtCommandClient serial;
 
-    public ModemService(SerialPortService serial) {
+    public ModemService(AtCommandClient serial) {
         this.serial = serial;
     }
 

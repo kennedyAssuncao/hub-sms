@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 @Component
-public class SerialPortService {
+public class SerialPortService implements AtCommandClient {
 
     private final SerialPort serialPort;
     private static final int RESPONSE_TIMEOUT_MS = 10000; // 10 seconds for commands to respond
