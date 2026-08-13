@@ -48,7 +48,7 @@ public class HuaweiSmsGateway implements SmsGateway {
 
             return finalResponse;
 
-        } catch (IllegalStateException e) {
+        } catch (ModemException | IllegalStateException e) {
             // Re-throw internal exceptions
             throw e;
         } catch (Exception e) {
