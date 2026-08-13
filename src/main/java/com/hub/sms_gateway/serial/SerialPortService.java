@@ -65,10 +65,15 @@ public class SerialPortService {
         open();
         clearInputBuffer();
 
+        String[] terminators = expectedTerminators.length == 0 ? new String[]{ "OK", "+CMS ERROR:", "ERROR"} : expectedTerminators;
+
         try {
             serialPort.getOutputStream().write((command + "\r").getBytes(StandardCharsets.US_ASCII));
+
             serialPort.getOutputStream().flush();
-            return waitForResponse(expectedTerminators);
+
+            return waitForResponse(terminators);
+
         } catch (IOException e) {
             throw new IllegalStateException("Erro ao enviar comando AT: " + command, e);
         }
