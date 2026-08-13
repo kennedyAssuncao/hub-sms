@@ -59,6 +59,10 @@ public class HuaweiSmsGateway implements SmsGateway {
 
     private void validateResponse(String response) {
 
+        if (response == null || response.isBlank()) {
+            throw new IllegalStateException("O modem não retornou resposta.");
+        }
+
         if (response.contains("+CMS ERROR:")) {
             throw ModemException.fromResponse(response);
         }
