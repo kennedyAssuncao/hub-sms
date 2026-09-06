@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -24,8 +26,6 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException exception,
             HttpServletRequest request
     ) {
-
-        log.error("Erro inesperado em {}",request.getRequestURI(),exception);
 
         Map<String, String> fields = new LinkedHashMap<>();
 
@@ -46,6 +46,38 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    @ExceptionHandler(SmsNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleSmsNotFound(SmsNotFoundException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiErrorResponse(
+                LocalDateTime.now(), HttpStatus.NOT_FOUND.value(), "SMS_NOT_FOUND",
+                exception.getMessage(), request.getRequestURI(), null));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidParameter(
+            MethodArgumentTypeMismatchException exception, HttpServletRequest request) {
+        String message = "Valor inválido para o parâmetro " + exception.getName() + ".";
+        return ResponseEntity.badRequest().body(new ApiErrorResponse(
+                LocalDateTime.now(), HttpStatus.BAD_REQUEST.value(), "VALIDATION_ERROR",
+                message, request.getRequestURI(), Map.of(exception.getName(), message)));
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiErrorResponse> handleMethodValidation(
+            HandlerMethodValidationException exception, HttpServletRequest request) {
+        if (exception.isForReturnValue()) {
+            return handleGenericException(exception, request);
+        }
+        Map<String, String> fields = new LinkedHashMap<>();
+        exception.getParameterValidationResults().forEach(result -> {
+            String name = result.getMethodParameter().getParameterName();
+            result.getResolvableErrors().forEach(error -> fields.put(name, error.getDefaultMessage()));
+        });
+        return ResponseEntity.badRequest().body(new ApiErrorResponse(
+                LocalDateTime.now(), HttpStatus.BAD_REQUEST.value(), "VALIDATION_ERROR",
+                "Existem parâmetros inválidos na requisição.", request.getRequestURI(), fields));
+    }
+
     @ExceptionHandler(ModemException.class)
     public ResponseEntity<ApiErrorResponse> handleModemException(ModemException exception,HttpServletRequest request) {
 
@@ -64,6 +96,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalStateException(IllegalStateException exception,HttpServletRequest request) {
 
+        log.error("Erro interno em {}", request.getRequestURI(), exception);
+
         ApiErrorResponse response = new ApiErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
@@ -78,6 +112,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGenericException(Exception exception, HttpServletRequest request) {
+
+        log.error("Erro inesperado em {}", request.getRequestURI(), exception);
 
         ApiErrorResponse response = new ApiErrorResponse(
                 LocalDateTime.now(),
