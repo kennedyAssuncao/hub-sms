@@ -1,5 +1,7 @@
 package com.hub.sms_gateway.service;
 
+import com.hub.sms_gateway.dto.SmsHistoryItemResponse;
+import com.hub.sms_gateway.dto.SmsHistoryResponse;
 import com.hub.sms_gateway.dto.SmsRequest;
 import com.hub.sms_gateway.dto.SmsResponse;
 import com.hub.sms_gateway.entity.SmsMessage;
@@ -10,6 +12,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class SmsService {
@@ -27,10 +31,11 @@ public class SmsService {
 
     public SmsResponse send(SmsRequest request) {
 
-        SmsMessage sms = new SmsMessage(
-                request.phone(),
-                request.message()
-        );
+        SmsMessage sms =
+                new SmsMessage(
+                        request.phone(),
+                        request.message()
+                );
 
         sms = repository.save(sms);
 
@@ -43,7 +48,7 @@ public class SmsService {
         );
     }
 
-    public Page<SmsMessage> findAll(
+    public SmsHistoryResponse findAll(
             int page,
             int size,
             SmsStatus status
@@ -51,20 +56,55 @@ public class SmsService {
 
         Pageable pageable = PageRequest.of(page, size);
 
+        Page<SmsMessage> result;
+
         if (status != null) {
-            return repository.findByStatus(status, pageable);
+            result = repository.findByStatus(status, pageable);
+        } else {
+            result = repository.findAll(pageable);
         }
 
-        return repository.findAll(pageable);
+        List<SmsHistoryItemResponse> items = result
+                .getContent()
+                .stream()
+                .map(this::toHistoryItemResponse)
+                .toList();
+
+        return new SmsHistoryResponse(
+                items,
+                result.getNumber(),
+                result.getSize(),
+                result.getTotalElements(),
+                result.getTotalPages()
+        );
     }
 
-    public SmsMessage findById(Long id) {
+    public SmsHistoryItemResponse findById(Long id) {
 
-        return repository.findById(id)
+        SmsMessage sms = repository
+                .findById(id)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
                                 "SMS não encontrado: " + id
                         )
                 );
+
+        return toHistoryItemResponse(sms);
+    }
+
+    private SmsHistoryItemResponse toHistoryItemResponse(
+            SmsMessage sms
+    ) {
+
+        return new SmsHistoryItemResponse(
+                sms.getId(),
+                sms.getPhone(),
+                sms.getMessage(),
+                sms.getStatus(),
+                sms.getCreatedAt(),
+                sms.getSentAt(),
+                sms.getErrorMessage(),
+                sms.getModemResponse()
+        );
     }
 }
