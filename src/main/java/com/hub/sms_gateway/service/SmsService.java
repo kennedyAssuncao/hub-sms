@@ -1,69 +1,70 @@
 package com.hub.sms_gateway.service;
 
 import com.hub.sms_gateway.dto.SmsRequest;
-import com.hub.sms_gateway.dto.SmsHistoryItemResponse;
-import com.hub.sms_gateway.dto.SmsHistoryResponse;
-import com.hub.sms_gateway.entity.SmsStatus;
-import com.hub.sms_gateway.exception.SmsNotFoundException;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.transaction.annotation.Transactional;
 import com.hub.sms_gateway.dto.SmsResponse;
 import com.hub.sms_gateway.entity.SmsMessage;
-import com.hub.sms_gateway.gateway.SmsGateway;
+import com.hub.sms_gateway.entity.SmsStatus;
+import com.hub.sms_gateway.messaging.SmsQueuePublisher;
 import com.hub.sms_gateway.repository.SmsMessageRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SmsService {
 
-    private final SmsGateway smsGateway;
     private final SmsMessageRepository repository;
+    private final SmsQueuePublisher publisher;
 
-    public SmsService(SmsGateway smsGateway, SmsMessageRepository repository) {
-        this.smsGateway = smsGateway;
+    public SmsService(
+            SmsMessageRepository repository,
+            SmsQueuePublisher publisher
+    ) {
         this.repository = repository;
-    }
-
-    @Transactional(readOnly = true)
-    public SmsHistoryItemResponse findById(Long id) {
-        return repository.findById(id)
-                .map(SmsHistoryItemResponse::from)
-                .orElseThrow(() -> new SmsNotFoundException(id));
-    }
-
-    @Transactional(readOnly = true)
-    public SmsHistoryResponse findAll(int page, int size, SmsStatus status) {
-        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
-        var result = status == null
-                ? repository.findAll(pageable)
-                : repository.findByStatus(status, pageable);
-        return new SmsHistoryResponse(result.getContent().stream().map(SmsHistoryItemResponse::from).toList(),
-                result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
+        this.publisher = publisher;
     }
 
     public SmsResponse send(SmsRequest request) {
 
-        SmsMessage sms = new SmsMessage(request.phone(), request.message());
+        SmsMessage sms = new SmsMessage(
+                request.phone(),
+                request.message()
+        );
 
-        repository.save(sms);
+        sms = repository.save(sms);
 
-        try {
-            String modemResponse = smsGateway.send(request.phone(),request.message());
+        publisher.publish(sms.getId());
 
-            sms.markAsSent(modemResponse);
+        return new SmsResponse(
+                sms.getId(),
+                sms.getStatus().name(),
+                null
+        );
+    }
 
-            repository.save(sms);
+    public Page<SmsMessage> findAll(
+            int page,
+            int size,
+            SmsStatus status
+    ) {
 
-            return new SmsResponse(sms.getId(), sms.getStatus().name(), modemResponse);
+        Pageable pageable = PageRequest.of(page, size);
 
-        } catch (RuntimeException exception) {
-
-            sms.markAsFailed(exception.getMessage());
-
-            repository.save(sms);
-
-            throw exception;
+        if (status != null) {
+            return repository.findByStatus(status, pageable);
         }
+
+        return repository.findAll(pageable);
+    }
+
+    public SmsMessage findById(Long id) {
+
+        return repository.findById(id)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "SMS não encontrado: " + id
+                        )
+                );
     }
 }

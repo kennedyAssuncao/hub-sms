@@ -17,6 +17,17 @@ spring:
     console:
       enabled: true
       path: /h2-console
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: hubsms
+    password: hubsms123
+
+    listener:
+      simple:
+        acknowledge-mode: auto
+        prefetch: 1
+
 sms:
   modem:
     port: COM5
