@@ -64,14 +64,14 @@ public class SmsService {
             result = repository.findAll(pageable);
         }
 
-        List<SmsHistoryItemResponse> items = result
-                .getContent()
-                .stream()
-                .map(this::toHistoryItemResponse)
-                .toList();
+        List<SmsHistoryItemResponse> content =
+                result.getContent()
+                        .stream()
+                        .map(SmsHistoryItemResponse::from)
+                        .toList();
 
         return new SmsHistoryResponse(
-                items,
+                content,
                 result.getNumber(),
                 result.getSize(),
                 result.getTotalElements(),
@@ -81,30 +81,13 @@ public class SmsService {
 
     public SmsHistoryItemResponse findById(Long id) {
 
-        SmsMessage sms = repository
-                .findById(id)
+        SmsMessage sms = repository.findById(id)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
                                 "SMS não encontrado: " + id
                         )
                 );
 
-        return toHistoryItemResponse(sms);
-    }
-
-    private SmsHistoryItemResponse toHistoryItemResponse(
-            SmsMessage sms
-    ) {
-
-        return new SmsHistoryItemResponse(
-                sms.getId(),
-                sms.getPhone(),
-                sms.getMessage(),
-                sms.getStatus(),
-                sms.getCreatedAt(),
-                sms.getSentAt(),
-                sms.getErrorMessage(),
-                sms.getModemResponse()
-        );
+        return SmsHistoryItemResponse.from(sms);
     }
 }
