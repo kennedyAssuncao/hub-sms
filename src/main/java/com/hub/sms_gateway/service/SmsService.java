@@ -6,11 +6,13 @@ import com.hub.sms_gateway.dto.SmsRequest;
 import com.hub.sms_gateway.dto.SmsResponse;
 import com.hub.sms_gateway.entity.SmsMessage;
 import com.hub.sms_gateway.entity.SmsStatus;
+import com.hub.sms_gateway.exception.SmsNotFoundException;
 import com.hub.sms_gateway.messaging.SmsQueuePublisher;
 import com.hub.sms_gateway.repository.SmsMessageRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -54,7 +56,14 @@ public class SmsService {
             SmsStatus status
     ) {
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(
+                        Sort.Order.desc("createdAt"),
+                        Sort.Order.desc("id")
+                )
+        );
 
         Page<SmsMessage> result;
 
@@ -82,11 +91,7 @@ public class SmsService {
     public SmsHistoryItemResponse findById(Long id) {
 
         SmsMessage sms = repository.findById(id)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "SMS não encontrado: " + id
-                        )
-                );
+                .orElseThrow(() -> new SmsNotFoundException(id));
 
         return SmsHistoryItemResponse.from(sms);
     }
