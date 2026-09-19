@@ -32,7 +32,7 @@ class SmsHistoryIntegrationTest {
     MockMvc mvc;
 
     @Autowired
-    SmsMessageRepository repository;
+    private SmsMessageRepository repository;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -41,7 +41,7 @@ class SmsHistoryIntegrationTest {
     SerialPortService serial;
 
     @BeforeEach
-    void clearHistory() {
+    void setUp() {
         repository.deleteAll();
     }
 
@@ -163,11 +163,18 @@ class SmsHistoryIntegrationTest {
     }
 
     private SmsMessage save(SmsStatus status) {
-        SmsMessage sms = new SmsMessage("+5511999999999", "Mensagem de teste");
-        if (status == SmsStatus.SENT) {
-            sms.markAsSent("+CMGS: 123\r\nOK");
-        } else if (status == SmsStatus.FAILED) {
-            sms.markAsFailed("Falha temporaria");
+
+        SmsMessage sms = new SmsMessage( "+5511999999999", "Mensagem de teste");
+
+        switch (status) {
+
+            case PENDING -> {
+                // Estado inicial. Não precisa alterar.
+            }
+            case PROCESSING -> sms.markAsProcessing();
+            case RETRYING -> sms.markAsRetrying("Falha temporaria");
+            case SENT -> sms.markAsSent("+CMGS: 123\r\nOK");
+            case FAILED -> sms.markAsFailed("Falha temporaria");
         }
         return repository.save(sms);
     }

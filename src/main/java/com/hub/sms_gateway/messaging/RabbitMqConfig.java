@@ -23,6 +23,17 @@ public class RabbitMqConfig {
     public static final String SMS_DLX =
             "sms.send.dlx";
 
+    public static final String SMS_RETRY_EXCHANGE =
+            "sms.retry.exchange";
+
+    public static final String SMS_RETRY_QUEUE =
+            "sms.retry.queue";
+
+    public static final String SMS_RETRY_ROUTING_KEY =
+            "sms.retry";
+
+    public static final int RETRY_DELAY_MS = 30_000;
+
     @Bean
     DirectExchange smsExchange() {
         return new DirectExchange(
@@ -91,5 +102,33 @@ public class RabbitMqConfig {
     @Bean
     JacksonJsonMessageConverter messageConverter() {
         return new JacksonJsonMessageConverter();
+    }
+
+    @Bean
+    DirectExchange smsRetryExchange() {
+        return new DirectExchange(
+                SMS_RETRY_EXCHANGE,
+                true,
+                false
+        );
+    }
+
+    @Bean
+    Queue smsRetryQueue() {
+
+        return QueueBuilder.durable(SMS_RETRY_QUEUE)
+                .ttl(RETRY_DELAY_MS)
+                .deadLetterExchange(SMS_EXCHANGE)
+                .deadLetterRoutingKey(SMS_ROUTING_KEY)
+                .build();
+    }
+
+    @Bean
+    Binding smsRetryBinding(Queue smsRetryQueue, DirectExchange smsRetryExchange ) {
+
+        return BindingBuilder
+                .bind(smsRetryQueue)
+                .to(smsRetryExchange)
+                .with(SMS_RETRY_ROUTING_KEY);
     }
 }

@@ -26,4 +26,16 @@ public class SmsQueuePublisher {
                 message
         );
     }
+
+    public void publishRetry(Long smsId) {
+
+        SmsSendMessage message =
+                new SmsSendMessage(smsId);
+
+        rabbitTemplate.convertAndSend(
+                RabbitMqConfig.SMS_RETRY_EXCHANGE,
+                RabbitMqConfig.SMS_RETRY_ROUTING_KEY,
+                message
+        );
+    }
 }

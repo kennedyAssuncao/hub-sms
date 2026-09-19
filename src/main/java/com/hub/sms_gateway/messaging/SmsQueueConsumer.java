@@ -13,57 +13,51 @@ public class SmsQueueConsumer {
 
     private final SmsMessageRepository repository;
     private final SmsGateway smsGateway;
+    private final SmsQueuePublisher publisher;
+
+    private static final int MAX_RETRIES = 3;
 
     public SmsQueueConsumer(
             SmsMessageRepository repository,
-            SmsGateway smsGateway
+            SmsGateway smsGateway,
+            SmsQueuePublisher publisher
     ) {
         this.repository = repository;
         this.smsGateway = smsGateway;
+        this.publisher = publisher;
     }
 
-    @RabbitListener(
-            queues = RabbitMqConfig.SMS_QUEUE,
-            concurrency = "1"
-    )
-    public void consume(
-            SmsSendMessage message
-    ) {
+    @RabbitListener( queues = RabbitMqConfig.SMS_QUEUE, concurrency = "1" )
+    public void consume(SmsSendMessage message) {
 
-        SmsMessage sms =
-                repository
-                        .findById(message.smsId())
-                        .orElseThrow(
-                                () ->
-                                        new IllegalStateException(
-                                                "SMS não encontrado: "
-                                                        + message.smsId()
-                                        )
-                        );
+        SmsMessage sms = repository.findById(message.smsId())
+                .orElseThrow(() -> new IllegalStateException( "SMS não encontrado: " + message.smsId() ));
 
-        if (sms.getStatus() != SmsStatus.PENDING) {
+        if (sms.getStatus() != SmsStatus.PENDING
+                && sms.getStatus() != SmsStatus.RETRYING) {
             return;
         }
 
+        sms.markAsProcessing();
+        repository.save(sms);
+
         try {
 
-            String modemResponse =
-                    smsGateway.send(
-                            sms.getPhone(),
-                            sms.getMessage()
-                    );
-
-            sms.markAsSent(
-                    modemResponse
-            );
-
+            String modemResponse = smsGateway.send(sms.getPhone(), sms.getMessage());
+            sms.markAsSent(modemResponse);
             repository.save(sms);
 
         } catch (RuntimeException exception) {
+            sms.incrementRetryCount();
+            if (sms.getRetryCount() <= MAX_RETRIES) {
+                sms.markAsRetrying( exception.getMessage());
+                repository.save(sms);
+                publisher.publishRetry(message.smsId());
 
-            sms.markAsFailed(
-                    exception.getMessage()
-            );
+                return;
+            }
+
+            sms.markAsFailed(exception.getMessage());
 
             repository.save(sms);
 

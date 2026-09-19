@@ -33,6 +33,9 @@ public class SmsMessage {
     @Column(length = 2000)
     private String modemResponse;
 
+    @Column(nullable = false)
+    private int retryCount = 0;
+
     protected SmsMessage() {
     }
 
@@ -53,6 +56,24 @@ public class SmsMessage {
     public void markAsFailed(String errorMessage) {
         this.status = SmsStatus.FAILED;
         this.errorMessage = errorMessage;
+    }
+
+    public void markAsProcessing() {
+        this.status = SmsStatus.PROCESSING;
+        this.errorMessage = null;
+    }
+
+    public void markAsRetrying(String errorMessage) {
+        this.status = SmsStatus.RETRYING;
+        this.errorMessage = errorMessage;
+    }
+
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    public void incrementRetryCount() {
+        this.retryCount++;
     }
 
     public Long getId() {
