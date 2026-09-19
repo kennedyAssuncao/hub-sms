@@ -41,7 +41,7 @@ public class SmsQueueConsumer {
                                         )
                         );
 
-        if (sms.getStatus() == SmsStatus.SENT) {
+        if (sms.getStatus() != SmsStatus.PENDING) {
             return;
         }
 

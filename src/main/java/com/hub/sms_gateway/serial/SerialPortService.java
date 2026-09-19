@@ -13,7 +13,7 @@ import java.util.Arrays;
 public class SerialPortService implements AtCommandClient {
 
     private final SerialPort serialPort;
-    private static final int RESPONSE_TIMEOUT_MS = 10000; // 10 seconds for commands to respond
+    private static final long RESPONSE_TIMEOUT_MS = 10_000L;
 
     public SerialPortService(
             @Value("${sms.modem.port}") String portName,
@@ -80,10 +80,14 @@ public class SerialPortService implements AtCommandClient {
     }
 
     public String waitForResponse(String... terminators) {
+        return waitForResponse(RESPONSE_TIMEOUT_MS, terminators);
+    }
+
+    public String waitForResponse(long timeoutMs, String... terminators) {
         StringBuilder response = new StringBuilder();
         long startTime = System.currentTimeMillis();
 
-        while ((System.currentTimeMillis() - startTime) < RESPONSE_TIMEOUT_MS) {
+        while ((System.currentTimeMillis() - startTime) < timeoutMs) {
             if (serialPort.bytesAvailable() > 0) {
                 byte[] buffer = new byte[serialPort.bytesAvailable()];
                 int bytesRead = serialPort.readBytes(buffer, buffer.length);

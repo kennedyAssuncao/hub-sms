@@ -9,6 +9,8 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class HuaweiSmsGateway implements SmsGateway {
 
+    private static final long SMS_SEND_TIMEOUT_MS = 60_000L;
+
     private final SerialPortService serial;
 
     public HuaweiSmsGateway(SerialPortService serial) {
@@ -36,7 +38,12 @@ public class HuaweiSmsGateway implements SmsGateway {
             serial.writeRaw(normalizedMessage.getBytes(StandardCharsets.US_ASCII));
             serial.writeRaw(new byte[]{26});
 
-            String finalResponse = serial.waitForResponse("OK", "+CMS ERROR:", "ERROR");
+            String finalResponse = serial.waitForResponse(
+                    SMS_SEND_TIMEOUT_MS,
+                    "OK",
+                    "+CMS ERROR:",
+                    "ERROR"
+            );
 
             validateResponse(finalResponse);
 

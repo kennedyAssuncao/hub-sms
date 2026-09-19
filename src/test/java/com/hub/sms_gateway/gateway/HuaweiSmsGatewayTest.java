@@ -43,7 +43,7 @@ class HuaweiSmsGatewayTest {
 
         String modemResponse = "+CMGS: 123\r\n\r\nOK\r\n";
 
-        when(serialPortService.waitForResponse("OK","+CMS ERROR:","ERROR")).thenReturn(modemResponse);
+        when(serialPortService.waitForResponse(60_000L,"OK","+CMS ERROR:","ERROR")).thenReturn(modemResponse);
 
         String response = huaweiSmsGateway.send(phone,"Test message");
 
@@ -83,7 +83,7 @@ class HuaweiSmsGatewayTest {
 
         mockSuccessfulInitialization(phone);
 
-        when(serialPortService.waitForResponse("OK","+CMS ERROR:","ERROR")).thenReturn("OK");
+        when(serialPortService.waitForResponse(60_000L,"OK","+CMS ERROR:","ERROR")).thenReturn("OK");
 
         IllegalStateException exception = assertThrows(IllegalStateException.class,() -> huaweiSmsGateway.send(phone,"Test message"));
 
@@ -97,7 +97,7 @@ class HuaweiSmsGatewayTest {
 
         mockSuccessfulInitialization(phone);
 
-        when(serialPortService.waitForResponse("OK","+CMS ERROR:","ERROR")).thenReturn("+CMS ERROR: 500");
+        when(serialPortService.waitForResponse(60_000L,"OK","+CMS ERROR:","ERROR")).thenReturn("+CMS ERROR: 500");
 
         assertThrows(ModemException.class,() -> huaweiSmsGateway.send(phone,"Test message"));
     }
@@ -109,7 +109,7 @@ class HuaweiSmsGatewayTest {
 
         mockSuccessfulInitialization(phone);
 
-        when(serialPortService.waitForResponse("OK","+CMS ERROR:","ERROR"))
+        when(serialPortService.waitForResponse(60_000L,"OK","+CMS ERROR:","ERROR"))
                 .thenReturn("+CMGS: 321\r\n\r\nOK\r\n");
 
         huaweiSmsGateway.send(phone,"Olá João");
